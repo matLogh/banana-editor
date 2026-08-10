@@ -7,7 +7,7 @@ else()
 endif()
 
 if(NOT TARGET ROOT::Core)
-  find_package(ROOT REQUIRED COMPONENTS Core RIO Hist Tree Net Gui Rint)
+  find_package(ROOT REQUIRED COMPONENTS Core RIO Hist Tree Net Gui Graf Rint)
 endif()
 if(DEFINED ROOT_USE_FILE)
   include("${ROOT_USE_FILE}")
@@ -33,7 +33,7 @@ add_library(TBananaEditor SHARED
   ${BANANA_EDITOR_SRC_DIR}/TBananaEditor.hh
   G__TBananaEditor.cxx
 )
-target_link_libraries(TBananaEditor PUBLIC ROOT::Core ROOT::RIO ROOT::Hist ROOT::Tree ROOT::Net ROOT::Gui)
+target_link_libraries(TBananaEditor PUBLIC ROOT::Core ROOT::RIO ROOT::Hist ROOT::Tree ROOT::Net ROOT::Gui ROOT::Graf)
 target_include_directories(TBananaEditor
   PUBLIC ${BANANA_EDITOR_SRC_DIR}
   PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
@@ -42,7 +42,7 @@ target_include_directories(TBananaEditor
 if(BANANA_EDITOR_BUILD_EXAMPLES)
   function(add_banana_editor_example target source)
     add_executable(${target} ${source})
-    target_link_libraries(${target} TBananaEditor ROOT::Core ROOT::RIO ROOT::Hist ROOT::Tree ROOT::Net ROOT::Gui ROOT::Rint)
+    target_link_libraries(${target} TBananaEditor ROOT::Core ROOT::RIO ROOT::Hist ROOT::Tree ROOT::Net ROOT::Gui ROOT::Graf ROOT::Rint)
     set_target_properties(${target} PROPERTIES
       RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
       ENABLE_EXPORTS TRUE

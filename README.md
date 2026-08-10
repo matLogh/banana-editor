@@ -11,7 +11,7 @@ submodule inside larger analysis projects.
 
 - CMake 3.16 or newer
 - C++ compiler supported by ROOT
-- ROOT with these components available: `Core`,`RIO`, `Hist`, `Tree`, `Net`, `Gui`, `Rint`
+- ROOT with these components available: `Core`, `RIO`, `Hist`, `Tree`, `Net`, `Gui`, `Graf`, `Rint`
 
 
 ## Build
@@ -69,7 +69,7 @@ Useful methods:
 
 - `Init(...)` opens the editor window for a `TH1` or `TH2`.
 - `SaveToFile("file.root")` loads existing cuts from the file, if present, and saves
-  cuts back on exit.
+  cuts back on exit as `TCutG` objects.
 - `SetDefaultBananaName("prefix")` sets the default prefix used for new banana names.
   New names are created as `prefix_0`, `prefix_1`, etc.
 

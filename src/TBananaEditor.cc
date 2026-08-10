@@ -1,5 +1,46 @@
 #include "TBananaEditor.hh"
 
+#include <TCutG.h>
+
+namespace
+{
+void WriteGraphAsCutG(const TGraph *graph)
+{
+    TCutG cut(graph->GetName(), graph->GetN());
+    cut.SetTitle(graph->GetTitle());
+    cut.SetLineColor(graph->GetLineColor());
+    cut.SetLineStyle(graph->GetLineStyle());
+    cut.SetLineWidth(graph->GetLineWidth());
+    cut.SetFillColor(graph->GetFillColor());
+    cut.SetFillStyle(graph->GetFillStyle());
+    cut.SetMarkerColor(graph->GetMarkerColor());
+    cut.SetMarkerStyle(graph->GetMarkerStyle());
+    cut.SetMarkerSize(graph->GetMarkerSize());
+
+    for (int i = 0; i < graph->GetN(); ++i)
+    {
+        double x = 0.0;
+        double y = 0.0;
+        graph->GetPoint(i, x, y);
+        cut.SetPoint(i, x, y);
+    }
+
+    cut.Write();
+}
+
+void WriteBananaObject(TObject *obj)
+{
+    TGraph *graph = dynamic_cast<TGraph *>(obj);
+    if (graph)
+    {
+        WriteGraphAsCutG(graph);
+        return;
+    }
+
+    obj->Write();
+}
+} // namespace
+
 ClassImpQ(TBananaEditor)
 
     TBananaEditor::TBananaEditor(const char *colName)
@@ -747,7 +788,7 @@ void TBananaEditor::DoSave()
         {
             std::cout << "Saving banana: " << obj->GetName() << std::endl;
             outputFile->cd();
-            obj->Write();
+            WriteBananaObject(obj);
         }
 
         outputFile->Close();
@@ -825,7 +866,7 @@ void TBananaEditor::CloseWindow()
             while ((obj = next()))
             {
                 outputFile->cd();
-                obj->Write();
+                WriteBananaObject(obj);
             }
             outputFile->Close();
             delete outputFile;
