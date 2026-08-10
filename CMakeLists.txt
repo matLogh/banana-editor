@@ -16,11 +16,13 @@ if(NOT COMMAND ROOT_GENERATE_DICTIONARY)
   include("${ROOT_DIR}/modules/RootNewMacros.cmake")
 endif()
 
-option(BANANA_EDITOR_BUILD_EXAMPLES "Build banana editor example executables" ${BANANA_EDITOR_IS_TOP_LEVEL})
-
 set(BANANA_EDITOR_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(BANANA_EDITOR_EXAMPLE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/example_editors")
 set(BANANA_EDITOR_EXAMPLE_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/example_data" CACHE PATH "Path to the example ROOT data directory")
+
+option(BANANA_EDITOR_BUILD_EXAMPLES "Build all bundled banana editor example executables" ${BANANA_EDITOR_IS_TOP_LEVEL})
+option(BANANA_EDITOR_BUILD_KRATTA_EDITOR "Build the bundled KRATTA banana editor executable" ${BANANA_EDITOR_BUILD_EXAMPLES})
+option(BANANA_EDITOR_BUILD_OSCAR_EDITOR "Build the bundled OSCAR banana editor executable" ${BANANA_EDITOR_BUILD_EXAMPLES})
 
 # banana editor library
 ROOT_GENERATE_DICTIONARY(G__TBananaEditor
@@ -39,21 +41,30 @@ target_include_directories(TBananaEditor
   PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
-if(BANANA_EDITOR_BUILD_EXAMPLES)
-  function(add_banana_editor_example target source)
-    add_executable(${target} ${source})
-    target_link_libraries(${target} TBananaEditor ROOT::Core ROOT::RIO ROOT::Hist ROOT::Tree ROOT::Net ROOT::Gui ROOT::Graf ROOT::Rint)
-    set_target_properties(${target} PROPERTIES
-      RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-      ENABLE_EXPORTS TRUE
-    )
+function(add_banana_editor_executable target)
+  if(ARGC LESS 2)
+    message(FATAL_ERROR "add_banana_editor_executable requires a target name and at least one source file")
+  endif()
 
-    add_custom_command(TARGET ${target} POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E create_symlink "${BANANA_EDITOR_EXAMPLE_DATA_DIR}" "${CMAKE_BINARY_DIR}/example_data"
-      COMMENT "Creating symbolic link to example_data directory"
-    )
-  endfunction()
+  add_executable(${target} ${ARGN})
+  target_link_libraries(${target} TBananaEditor ROOT::Core ROOT::RIO ROOT::Hist ROOT::Tree ROOT::Net ROOT::Gui ROOT::Graf ROOT::Rint)
+  set_target_properties(${target} PROPERTIES ENABLE_EXPORTS TRUE)
+endfunction()
 
-  add_banana_editor_example(kratta_editor ${BANANA_EDITOR_EXAMPLE_DIR}/kratta_editor.cpp)
-  add_banana_editor_example(oscar_editor ${BANANA_EDITOR_EXAMPLE_DIR}/oscar_editor.cpp)
+function(add_banana_editor_bundled_example target source)
+  add_banana_editor_executable(${target} ${source})
+  set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
+  add_custom_command(TARGET ${target} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink "${BANANA_EDITOR_EXAMPLE_DATA_DIR}" "${CMAKE_BINARY_DIR}/example_data"
+    COMMENT "Creating symbolic link to example_data directory"
+  )
+endfunction()
+
+if(BANANA_EDITOR_BUILD_KRATTA_EDITOR)
+  add_banana_editor_bundled_example(kratta_editor ${BANANA_EDITOR_EXAMPLE_DIR}/kratta_editor.cpp)
+endif()
+
+if(BANANA_EDITOR_BUILD_OSCAR_EDITOR)
+  add_banana_editor_bundled_example(oscar_editor ${BANANA_EDITOR_EXAMPLE_DIR}/oscar_editor.cpp)
 endif()

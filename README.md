@@ -37,7 +37,12 @@ cmake --build build
 ```
 
 `BANANA_EDITOR_BUILD_EXAMPLES` defaults to `ON` when this repository is the top-level
-CMake project, and defaults to `OFF` when included through `add_subdirectory()`.
+CMake project, and defaults to `OFF` when included through `add_subdirectory()`. The
+bundled editors can also be selected independently:
+
+```bash
+cmake -S . -B build -DBANANA_EDITOR_BUILD_KRATTA_EDITOR=ON -DBANANA_EDITOR_BUILD_OSCAR_EDITOR=OFF
+```
 
 ## Use As A Submodule
 
@@ -47,6 +52,24 @@ In a parent CMake project:
 add_subdirectory(path/to/banana-editor)
 
 target_link_libraries(your_target PRIVATE TBananaEditor)
+```
+
+To build an executable that uses the editor from the parent project, use the helper
+provided by the submodule:
+
+```cmake
+add_subdirectory(path/to/banana-editor)
+
+add_banana_editor_executable(my_editor src/my_editor.cpp)
+```
+
+The bundled example executables remain opt-in when this project is used as a
+submodule:
+
+```cmake
+set(BANANA_EDITOR_BUILD_OSCAR_EDITOR ON CACHE BOOL "" FORCE)
+set(BANANA_EDITOR_BUILD_KRATTA_EDITOR OFF CACHE BOOL "" FORCE)
+add_subdirectory(path/to/banana-editor)
 ```
 
 If the parent project already called `find_package(ROOT ...)`, Banana Editor will
