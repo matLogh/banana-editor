@@ -892,6 +892,8 @@ void TBananaEditor::CloseWindow()
 void TBananaEditor::SetStatusText(const char *txt, Int_t pi)
 {
     // Set text in status bar.
+    if (!fStatusBar)
+        return;
     fStatusBar->SetText(txt, pi);
 }
 
@@ -900,16 +902,19 @@ void TBananaEditor::EventInfo(Int_t event, Int_t px, Int_t py, TObject *selected
     //  Writes the event status in the status bar parts
     const char *text0, *text1, *text3;
     char text2[50];
-    text0 = selected->GetTitle();
+    if (!fStatusBar)
+        return;
+
+    text0 = selected ? selected->GetTitle() : "";
     SetStatusText(text0, 0);
-    text1 = selected->GetName();
+    text1 = selected ? selected->GetName() : "";
     SetStatusText(text1, 1);
     if (event == kKeyPress)
         sprintf(text2, "%c", (char)px);
     else
         sprintf(text2, "%d,%d", px, py);
     SetStatusText(text2, 2);
-    text3 = selected->GetObjectInfo(px, py);
+    text3 = selected ? selected->GetObjectInfo(px, py) : "";
     SetStatusText(text3, 3);
 }
 
