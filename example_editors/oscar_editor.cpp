@@ -16,8 +16,11 @@
 #include <iostream>
 #include <string>
 
-std::string INPUT_ROOT_FILENAME{"example_data/oscar_sum.root"};
+std::string INPUT_ROOT_FILENAME{"analysis/sum-62_68.root"};
+std::string BANANA_ROOT_FILEPATH_OSCARUP{"Conf/CUT/OSCARUP/EdE/"};
+std::string BANANA_ROOT_FILEPATH_OSCARDOWN{"Conf/CUT/OSCARDOWN/EdE/"};
 std::string OUTPUT_PATH{"."};
+std::string BANANA_NAME_PREFIX{"a14_z6_t"};
 
 void PrintUsage(const char *program_name)
 {
@@ -100,7 +103,8 @@ bool EnsureOutputDirectory()
         return false;
     }
 
-    if (gSystem->mkdir(OUTPUT_PATH.c_str(), kTRUE) != 0 && gSystem->AccessPathName(OUTPUT_PATH.c_str()))
+    if (gSystem->mkdir(OUTPUT_PATH.c_str(), kTRUE) != 0 &&
+        gSystem->AccessPathName(OUTPUT_PATH.c_str()))
     {
         std::cerr << "Could not create output directory: " << OUTPUT_PATH << '\n';
         return false;
@@ -119,18 +123,17 @@ bool EnsureOutputDirectory()
 
 TH2 *ReadTelescopeHistogram(TFile &file_data, int det_id)
 {
-    const std::string hist_name = "m_dE_E_tel" + std::to_string(det_id);
+    const std::string hist_name = "m_EdE_tel_" + std::to_string(det_id);
 
-    const char *up_directories[] = {"up_blu", "OscarUp/EdE"};
-    const char *down_directories[] = {"up_nero", "down_nero", "OscarDown/EdE"};
+    const std::array up_directories{"up_blu", "OscarUp/EdE"};
+    const std::array down_directories{"down_nero", "OscarDown/EdE"};
 
-    const char **directories = det_id < 64 ? up_directories : down_directories;
-    const int directory_count = det_id < 64 ? 2 : 3;
+    const auto *directories = det_id < 64 ? &up_directories : &down_directories;
 
-    for (int i = 0; i < directory_count; ++i)
+    for (const auto &dir : *directories)
     {
-        const std::string object_path = std::string(directories[i]) + "/" + hist_name;
-        TH2 *matrix = dynamic_cast<TH2 *>(file_data.Get(object_path.c_str()));
+        const std::string object_path = std::string(dir) + "/" + hist_name;
+        TH2              *matrix      = dynamic_cast<TH2 *>(file_data.Get(object_path.c_str()));
         if (matrix)
         {
             matrix->SetDirectory(nullptr);
@@ -165,7 +168,8 @@ extern "C" void plot_telescope(int det_id, const char *input_root_filename)
     TBananaEditor editor(Form("Banana editor: OSCAR pseudotelescope %i", det_id));
     editor.SetDefaultBananaName("a14_z6_t" + std::to_string(det_id));
 
-    std::string fname = OUTPUT_PATH + "/oscar_t_" + std::to_string(det_id) + ".root";
+    std::string fname = det_id < 64 ? BANANA_ROOT_FILEPATH_OSCARUP : BANANA_ROOT_FILEPATH_OSCARDOWN;
+    fname += "/oscar_t_" + std::to_string(det_id) + ".root";
     editor.SaveToFile(fname.c_str());
     editor.Init(nullptr, 1600, 800, matrix, &banana_list, 0);
     delete matrix;
@@ -183,8 +187,8 @@ void CreateCanvasWithButtons()
 
     // Divide the canvas into 64 pads (16x4) + a gap (16x2) + 64 pads (16x4)
     // blu
-    const int ncol = 16;
-    const int nrow = 9;
+    const int ncol           = 16;
+    const int nrow           = 9;
     const int nrow_telescope = 4;
     canvas->Divide(ncol, nrow);
 
@@ -195,7 +199,7 @@ void CreateCanvasWithButtons()
         for (int y = 0; y < nrow_telescope; y++)
         {
             int button_pos = x + ncol * y;
-            int det_id = x + ncol * y;
+            int det_id     = x + ncol * y;
             // Set the pad's unique (x,y) position
             auto *pad = canvas->cd(button_pos + 1);
             pad->SetTopMargin(0);
@@ -203,9 +207,11 @@ void CreateCanvasWithButtons()
             pad->SetLeftMargin(0);
             pad->SetRightMargin(0);
             // pad->SetCursor(kHand);
+
             // Create a button on the pad
             TButton *button =
-                new TButton(Form("%i", det_id), Form("plot_telescope(%i,\"%s\")", det_id, INPUT_ROOT_FILENAME.c_str()),
+                new TButton(Form("%i", det_id),
+                            Form("plot_telescope(%i,\"%s\")", det_id, INPUT_ROOT_FILENAME.c_str()),
                             0.0, 0.0, 1.0, 1.0);
             button->SetFillColor(kBlue);
             button->SetTextColor(kWhite);
@@ -228,7 +234,7 @@ void CreateCanvasWithButtons()
         for (int y = nrow_telescope + 1; y < nrow; y++)
         {
             int button_pos = x + ncol * y;
-            int det_id = 64 + x + ncol * (y - nrow_telescope - 1);
+            int det_id     = 64 + x + ncol * (y - nrow_telescope - 1);
             // Set the pad's unique (x,y) position
             auto *pad = canvas->cd(button_pos + 1);
             pad->SetTopMargin(0);
@@ -238,7 +244,8 @@ void CreateCanvasWithButtons()
             // pad->SetCursor(kHand);
             // Create a button on the pad
             TButton *button =
-                new TButton(Form("%i", det_id), Form("plot_telescope(%i,\"%s\")", det_id, INPUT_ROOT_FILENAME.c_str()),
+                new TButton(Form("%i", det_id),
+                            Form("plot_telescope(%i,\"%s\")", det_id, INPUT_ROOT_FILENAME.c_str()),
                             0.0, 0.0, 1.0, 1.0);
             button->SetFillColor(kBlack);
             button->SetTextColor(kWhite); // White text for black buttons
@@ -272,7 +279,8 @@ int main(int argc, char *argv[])
     // TRint app`("Banana App", nullptr, nullptr);
 
     // Declare the compiled function to ROOT's interpreter so TButton can call it
-    gInterpreter->Declare("extern \"C\" void plot_telescope(int det_id, const char *input_root_filename);");
+    gInterpreter->Declare(
+        "extern \"C\" void plot_telescope(int det_id, const char *input_root_filename);");
 
     TList banana_list;
 

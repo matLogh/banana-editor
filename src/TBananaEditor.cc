@@ -4,6 +4,22 @@
 
 namespace
 {
+struct HistogramViewRange
+{
+    bool valid = false;
+    double xmin = 0.0;
+    double xmax = 0.0;
+    double ymin = 0.0;
+    double ymax = 0.0;
+};
+
+HistogramViewRange gLastHistogramViewRange;
+
+bool AxisContainsRange(const TAxis *axis, double min, double max)
+{
+    return axis && min < max && min >= axis->GetXmin() && max <= axis->GetXmax();
+}
+
 void WriteGraphAsCutG(const TGraph *graph)
 {
     TCutG cut(graph->GetName(), graph->GetN());
@@ -205,8 +221,20 @@ void TBananaEditor::DrawDefaultCanvas()
     {
         TH2 *h = (TH2 *)fHist;
         fCanvas->cd();
-        h->GetXaxis()->SetRangeUser(50, h->GetXaxis()->GetXmax());
-        h->GetYaxis()->SetRangeUser(50, h->GetYaxis()->GetXmax());
+
+        TAxis *xaxis = h->GetXaxis();
+        TAxis *yaxis = h->GetYaxis();
+        xaxis->UnZoom();
+        yaxis->UnZoom();
+
+        if (gLastHistogramViewRange.valid &&
+            AxisContainsRange(xaxis, gLastHistogramViewRange.xmin, gLastHistogramViewRange.xmax) &&
+            AxisContainsRange(yaxis, gLastHistogramViewRange.ymin, gLastHistogramViewRange.ymax))
+        {
+            xaxis->SetRangeUser(gLastHistogramViewRange.xmin, gLastHistogramViewRange.xmax);
+            yaxis->SetRangeUser(gLastHistogramViewRange.ymin, gLastHistogramViewRange.ymax);
+        }
+
         h->Draw("COLZ0");
     }
     else
@@ -853,6 +881,25 @@ void TBananaEditor::TryToClose()
 
 void TBananaEditor::CloseWindow()
 {
+    if (fHist && fHist->InheritsFrom(TH2::Class()))
+    {
+        TAxis *xaxis = fHist->GetXaxis();
+        TAxis *yaxis = fHist->GetYaxis();
+
+        const int firstX = xaxis->GetFirst();
+        const int lastX = xaxis->GetLast();
+        const int firstY = yaxis->GetFirst();
+        const int lastY = yaxis->GetLast();
+
+        gLastHistogramViewRange.xmin = xaxis->GetBinLowEdge(firstX);
+        gLastHistogramViewRange.xmax = xaxis->GetBinUpEdge(lastX);
+        gLastHistogramViewRange.ymin = yaxis->GetBinLowEdge(firstY);
+        gLastHistogramViewRange.ymax = yaxis->GetBinUpEdge(lastY);
+        gLastHistogramViewRange.valid =
+            gLastHistogramViewRange.xmin < gLastHistogramViewRange.xmax &&
+            gLastHistogramViewRange.ymin < gLastHistogramViewRange.ymax;
+    }
+
     // Save confirmed bananas (fBananaList) to file
     // Note: fBananaList only contains confirmed changes (updated via OkAction)
     // Unconfirmed changes in fBananaListTemp are NOT saved
