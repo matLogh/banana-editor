@@ -123,10 +123,10 @@ bool EnsureOutputDirectory()
 
 TH2 *ReadTelescopeHistogram(TFile &file_data, int det_id)
 {
-    const std::string hist_name = "m_EdE_tel_" + std::to_string(det_id);
+    const std::string hist_name = "EdE_raw_tel_" + std::to_string(det_id);
 
-    const std::array up_directories{"up_blu", "OscarUp/EdE"};
-    const std::array down_directories{"down_nero", "OscarDown/EdE"};
+    const std::array up_directories{"up_blu", "OscarUp/EdE_raw"};
+    const std::array down_directories{"down_nero", "OscarDown/EdE_raw"};
 
     const auto *directories = det_id < 64 ? &up_directories : &down_directories;
 
@@ -140,6 +140,14 @@ TH2 *ReadTelescopeHistogram(TFile &file_data, int det_id)
             return matrix;
         }
     }
+
+    std::cerr << "Histogram with id " << det_id << "and name " << hist_name << " was not found in "
+              << file_data.GetName() << ". Checked were directories ";
+    for (const auto &dir : *directories)
+    {
+        std::cerr << dir << " ";
+    }
+    std::cerr << "\n";
 
     return nullptr;
 }
@@ -157,9 +165,6 @@ extern "C" void plot_telescope(int det_id, const char *input_root_filename)
     file_data.Close();
     if (!matrix)
     {
-        std::cerr << "Histogram m_dE_E_tel" << det_id << " was not found in " << input_root_filename
-                  << ". Checked up_blu/OscarUp/EdE for telescopes 0-63 and "
-                  << "up_nero/down_nero/OscarDown/EdE for telescopes 64-127.\n";
         return;
     }
 
