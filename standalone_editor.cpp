@@ -1,110 +1,213 @@
 #include "TApplication.h"
-#include "TButton.h"
-#include "TCanvas.h"
-#include "TColor.h"
-#include "TDirectory.h"
 #include "TFile.h"
-#include "TH2D.h"
-#include "TInterpreter.h"
-#include "TPad.h"
+#include "TH2.h"
+#include "TList.h"
+#include "TSystem.h"
 
 #include "TBananaEditor.hh"
 
+#include <cstring>
 #include <iostream>
+#include <memory>
 #include <string>
 
-std::string INPUT_ROOT_FILENAME{"example_data/kratta_sum.root"};
-std::string OUTPUT_PATH{"."};
-
-extern "C" void plot_pd0pd1(int det_id, const char *input_root_filename)
+namespace
 {
-    TFile file_data(input_root_filename, "READ");
+struct Options
+{
+    std::string inputFile;
+    std::string matrixPath;
+    std::string outputFile{"bananas.root"};
+    std::string bananaPrefix{"banana"};
+};
 
-    std::string hname = "KRATTA/kratta_pd0pd1_" + std::to_string(det_id);
+enum class ParseStatus
+{
+    Ok,
+    Help,
+    Error
+};
 
-    // get histo
-    TH2 *matrix = (TH2 *)gDirectory->Get(hname.c_str());
-    matrix->SetDirectory(0);
-    file_data.Close();
-    // get banana list
-
-    TList *banana_list = new TList();
-
-    TBananaEditor editor(Form("Banana editor KRATTA %i", det_id));
-
-    std::string fname = OUTPUT_PATH + "/kratta_pd0pd1_" + std::to_string(det_id) + ".root";
-    editor.SaveToFile(fname.c_str());
-    editor.Init(nullptr, 1600, 800, matrix, banana_list, 0);
-    delete matrix;
+void PrintUsage(const char *program)
+{
+    std::cout
+        << "Usage:\n"
+        << "  " << program
+        << " --input <input.root> --matrix <directory/matrix> [options]\n"
+        << "  " << program << " <input.root> <directory/matrix> [output.root] [prefix]\n\n"
+        << "Options:\n"
+        << "  -i, --input <file.root>    Input ROOT file\n"
+        << "  -m, --matrix <path>        Full path to a TH2 inside the ROOT file\n"
+        << "  -o, --output <file.root>   Cut file to create or edit (default: bananas.root)\n"
+        << "  -p, --prefix <name>        Prefix for new cuts (default: banana)\n"
+        << "  -h, --help                 Show this help message\n\n"
+        << "Example:\n"
+        << "  " << program
+        << " -i sum.root -m AgataOscarUp/m_Energy_Theta -o C14.root -p C14_Ex2p7\n";
 }
 
-void CreateCanvasWithButtons()
+bool ReadOptionValue(int argc, char *argv[], int &index, std::string &destination)
 {
-    // Create a new canvas
-    TCanvas *canvas = new TCanvas("KRATTA", "KRATTA array map", 600, 350);
-    // Closing the selector window should end the ROOT application loop.
-    if (gApplication)
+    if (index + 1 >= argc)
     {
-        canvas->Connect("Closed()", "TApplication", gApplication, "Terminate()");
+        std::cerr << "Missing value after " << argv[index] << '\n';
+        return false;
     }
+    destination = argv[++index];
+    return true;
+}
 
-    // Divide the canvas into 64 pads (16x4) + a gap (16x2) + 64 pads (16x4)
-    const int ncol = 8;
-    const int nrow = 5;
-    canvas->Divide(ncol, nrow);
-
-    // Loop over the pads
-
-    for (int x = 0; x < ncol; x++)
+ParseStatus ParseCommandLine(int argc, char *argv[], Options &options)
+{
+    int positionalIndex = 0;
+    for (int i = 1; i < argc; ++i)
     {
-        for (int y = 0; y < nrow; y++)
+        const char *argument = argv[i];
+        if (std::strcmp(argument, "-h") == 0 || std::strcmp(argument, "--help") == 0)
         {
-            int button_pos = x + ncol * y;
-            int det_id = x + ncol * y;
-            // Set the pad's unique (x,y) position
-            auto *pad = canvas->cd(button_pos + 1);
-            pad->SetTopMargin(0);
-            pad->SetBottomMargin(0);
-            pad->SetLeftMargin(0);
-            pad->SetRightMargin(0);
-            // Create a button on the pad
-            TButton *button =
-                new TButton(Form("%i", det_id), Form("plot_pd0pd1(%i,\"%s\")", det_id, INPUT_ROOT_FILENAME.c_str()),
-                            0.0, 0.0, 1.0, 1.0);
-            button->SetFillColor(TColor::GetColor("#7CB342")); // Light olive green
-            if (x == 3 || x == 7)
-            {
-                button->SetFillColor(kBlack); // Black for switched-off detectors
-            }
-            button->SetTextSize(0.5);
-            button->Draw();
+            PrintUsage(argv[0]);
+            return ParseStatus::Help;
+        }
+        if (std::strcmp(argument, "-i") == 0 || std::strcmp(argument, "--input") == 0)
+        {
+            if (!ReadOptionValue(argc, argv, i, options.inputFile))
+                return ParseStatus::Error;
+            continue;
+        }
+        if (std::strcmp(argument, "-m") == 0 || std::strcmp(argument, "--matrix") == 0)
+        {
+            if (!ReadOptionValue(argc, argv, i, options.matrixPath))
+                return ParseStatus::Error;
+            continue;
+        }
+        if (std::strcmp(argument, "-o") == 0 || std::strcmp(argument, "--output") == 0)
+        {
+            if (!ReadOptionValue(argc, argv, i, options.outputFile))
+                return ParseStatus::Error;
+            continue;
+        }
+        if (std::strcmp(argument, "-p") == 0 || std::strcmp(argument, "--prefix") == 0)
+        {
+            if (!ReadOptionValue(argc, argv, i, options.bananaPrefix))
+                return ParseStatus::Error;
+            continue;
+        }
+        if (argument[0] == '-')
+        {
+            std::cerr << "Unknown option: " << argument << '\n';
+            return ParseStatus::Error;
+        }
+
+        switch (positionalIndex++)
+        {
+        case 0:
+            options.inputFile = argument;
+            break;
+        case 1:
+            options.matrixPath = argument;
+            break;
+        case 2:
+            options.outputFile = argument;
+            break;
+        case 3:
+            options.bananaPrefix = argument;
+            break;
+        default:
+            std::cerr << "Unexpected positional argument: " << argument << '\n';
+            return ParseStatus::Error;
         }
     }
-    // Update the canvas
-    canvas->Update();
-    canvas->SetEditable(kFALSE);
+
+    if (options.inputFile.empty() || options.matrixPath.empty())
+    {
+        std::cerr << "Both --input and --matrix are required\n";
+        return ParseStatus::Error;
+    }
+    if (options.outputFile.empty() || options.bananaPrefix.empty())
+    {
+        std::cerr << "The output filename and banana prefix cannot be empty\n";
+        return ParseStatus::Error;
+    }
+    if (options.inputFile == options.outputFile)
+    {
+        std::cerr << "Input and output ROOT files must be different\n";
+        return ParseStatus::Error;
+    }
+    return ParseStatus::Ok;
 }
+
+bool EnsureOutputDirectory(const std::string &outputFile)
+{
+    const std::size_t separator = outputFile.find_last_of('/');
+    if (separator == std::string::npos)
+        return true;
+
+    const std::string directory = outputFile.substr(0, separator);
+    if (directory.empty())
+        return true;
+
+    if (gSystem->mkdir(directory.c_str(), kTRUE) != 0 &&
+        gSystem->AccessPathName(directory.c_str()))
+    {
+        std::cerr << "Could not create output directory: " << directory << '\n';
+        return false;
+    }
+    return true;
+}
+
+std::unique_ptr<TH2> LoadMatrix(const Options &options)
+{
+    TFile input(options.inputFile.c_str(), "READ");
+    if (input.IsZombie())
+    {
+        std::cerr << "Cannot open input ROOT file: " << options.inputFile << '\n';
+        return nullptr;
+    }
+
+    TH2 *source = input.Get<TH2>(options.matrixPath.c_str());
+    if (!source)
+    {
+        std::cerr << "Cannot find TH2 matrix '" << options.matrixPath << "' in "
+                  << options.inputFile << '\n';
+        return nullptr;
+    }
+
+    auto matrix = std::unique_ptr<TH2>(dynamic_cast<TH2 *>(source->Clone("banana_editor_matrix")));
+    if (!matrix)
+    {
+        std::cerr << "Could not clone matrix '" << options.matrixPath << "'\n";
+        return nullptr;
+    }
+    matrix->SetDirectory(nullptr);
+    return matrix;
+}
+} // namespace
 
 int main(int argc, char *argv[])
 {
-
-    if (argc == 2)
+    Options options;
+    const ParseStatus parseStatus = ParseCommandLine(argc, argv, options);
+    if (parseStatus == ParseStatus::Help)
+        return 0;
+    if (parseStatus == ParseStatus::Error)
     {
-        INPUT_ROOT_FILENAME = argv[1];
+        PrintUsage(argv[0]);
+        return 1;
     }
 
-    TApplication app("app", nullptr, nullptr);
+    if (!EnsureOutputDirectory(options.outputFile))
+        return 1;
 
-    // Declare the compiled function to ROOT's interpreter so TButton can call it
-    gInterpreter->Declare("extern \"C\" void plot_pd0pd1(int det_id, const char *input_root_filename);");
+    std::unique_ptr<TH2> matrix = LoadMatrix(options);
+    if (!matrix)
+        return 1;
 
-    TList banana_list;
-
-    // TBananaEditor editor("banana_editor");
-    // editor.Init(nullptr, 800, 600, h, &banana_list, 0);
-
-    CreateCanvasWithButtons();
-    app.Run();
+    TApplication application("Simple banana editor", nullptr, nullptr);
+    TList         bananaList;
+    TBananaEditor editor(("Banana editor: " + options.matrixPath).c_str());
+    editor.SaveToFile(options.outputFile);
+    editor.SetDefaultBananaName(options.bananaPrefix);
+    editor.Init(nullptr, 1600, 900, matrix.get(), &bananaList, 0);
 
     return 0;
 }

@@ -19,7 +19,6 @@
 std::string INPUT_ROOT_FILENAME{"analysis/sum-62_68.root"};
 std::string BANANA_ROOT_FILEPATH_OSCARUP{"Conf/CUT/OSCARUP/EdE/"};
 std::string BANANA_ROOT_FILEPATH_OSCARDOWN{"Conf/CUT/OSCARDOWN/EdE/"};
-std::string OUTPUT_PATH{"."};
 std::string BANANA_NAME_PREFIX{"a14_z6_t"};
 
 void PrintUsage(const char *program_name)
@@ -27,8 +26,14 @@ void PrintUsage(const char *program_name)
     std::cout << "Usage: " << program_name << " [options]\n"
               << "Options:\n"
               << "  -i, --input <file.root>  Input ROOT file with OSCAR histograms\n"
-              << "  -o, --output <directory> Output directory for saved banana ROOT files\n"
-              << "  -h, --help              Show this help message\n";
+              << "  -o, --output <up-dir> <down-dir>\n"
+              << "                            Output directories for OSCARUP and OSCARDOWN\n"
+              << "  -h, --help              Show this help message\n"
+              << "\n"
+              << "Current/default paths:\n"
+              << "  Input:            " << INPUT_ROOT_FILENAME << '\n'
+              << "  Output (OSCARUP):  " << BANANA_ROOT_FILEPATH_OSCARUP << '\n'
+              << "  Output (OSCARDOWN): " << BANANA_ROOT_FILEPATH_OSCARDOWN << '\n';
 }
 
 enum class ParseStatus
@@ -64,13 +69,14 @@ ParseStatus ParseCommandLine(int argc, char *argv[])
 
         if (std::strcmp(arg, "-o") == 0 || std::strcmp(arg, "--output") == 0)
         {
-            if (i + 1 >= argc)
+            if (i + 2 >= argc)
             {
-                std::cerr << "Missing value after " << arg << '\n';
+                std::cerr << arg << " requires OSCARUP and OSCARDOWN output directories\n";
                 PrintUsage(argv[0]);
                 return ParseStatus::Error;
             }
-            OUTPUT_PATH = argv[++i];
+            BANANA_ROOT_FILEPATH_OSCARUP   = argv[++i];
+            BANANA_ROOT_FILEPATH_OSCARDOWN = argv[++i];
             continue;
         }
 
@@ -95,25 +101,25 @@ ParseStatus ParseCommandLine(int argc, char *argv[])
     return ParseStatus::Ok;
 }
 
-bool EnsureOutputDirectory()
+bool EnsureOutputDirectory(const std::string &output_path)
 {
-    if (OUTPUT_PATH.empty())
+    if (output_path.empty())
     {
         std::cerr << "Output directory cannot be empty\n";
         return false;
     }
 
-    if (gSystem->mkdir(OUTPUT_PATH.c_str(), kTRUE) != 0 &&
-        gSystem->AccessPathName(OUTPUT_PATH.c_str()))
+    if (gSystem->mkdir(output_path.c_str(), kTRUE) != 0 &&
+        gSystem->AccessPathName(output_path.c_str()))
     {
-        std::cerr << "Could not create output directory: " << OUTPUT_PATH << '\n';
+        std::cerr << "Could not create output directory: " << output_path << '\n';
         return false;
     }
 
-    void *directory = gSystem->OpenDirectory(OUTPUT_PATH.c_str());
+    void *directory = gSystem->OpenDirectory(output_path.c_str());
     if (!directory)
     {
-        std::cerr << "Output path is not a directory: " << OUTPUT_PATH << '\n';
+        std::cerr << "Output path is not a directory: " << output_path << '\n';
         return false;
     }
     gSystem->FreeDirectory(directory);
@@ -275,7 +281,8 @@ int main(int argc, char *argv[])
     {
         return 1;
     }
-    if (!EnsureOutputDirectory())
+    if (!EnsureOutputDirectory(BANANA_ROOT_FILEPATH_OSCARUP) ||
+        !EnsureOutputDirectory(BANANA_ROOT_FILEPATH_OSCARDOWN))
     {
         return 1;
     }

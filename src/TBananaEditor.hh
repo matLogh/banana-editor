@@ -84,6 +84,7 @@ class TBananaEditor : public TObject
     int selectedPoint;
     int fID;
     BananaEditStatus fBananaEditStatus;
+    bool fClosing;
 
   private:
     int GetNextFreeBananaNumber();
@@ -133,7 +134,7 @@ class TBananaEditor : public TObject
 
     static void MoveGraphPoints(TGraph *g, Double_t dx, Double_t dy);
 
-    ClassDef(TBananaEditor, 3)
+    ClassDef(TBananaEditor, 4)
 };
 
 #endif

@@ -26,6 +26,7 @@ cmake --build build
 This creates:
 
 - `libTBananaEditor.so`
+- `simple_banana_editor`
 - `kratta_editor`
 - `oscar_editor`
 
@@ -119,6 +120,31 @@ Keyboard shortcuts inside the canvas:
 - `m`: edit bananas
 - `l`: toggle linear/log Z scale
 
+## Simple Single-Matrix Editor
+
+`simple_banana_editor` opens any two-dimensional histogram in a ROOT file. The
+matrix argument is the complete ROOT object path, including any directories that
+contain it:
+
+```bash
+./simple_banana_editor \
+  --input sum.root \
+  --matrix AgataOscarUp/m_Energy_Theta \
+  --output C14_ETheta.root \
+  --prefix C14_Ex2p7
+```
+
+The short options are `-i`, `-m`, `-o`, and `-p`. Positional arguments are also
+accepted:
+
+```bash
+./simple_banana_editor sum.root AgataOscarUp/m_Energy_Theta C14_ETheta.root C14_Ex2p7
+```
+
+The output defaults to `bananas.root` and the name prefix defaults to `banana`.
+Existing cuts in the output file are loaded for editing. Newly created cuts are
+named `<prefix>_0`, `<prefix>_1`, and so on, and are saved as `TCutG` objects.
+
 ## Example Editors
 
 ### KRATTA
@@ -174,14 +200,14 @@ Specify an input ROOT file:
 ./oscar_editor --input path/to/oscar_sum.root
 ```
 
-Specify where banana ROOT files are saved:
+Specify where OSCARUP and OSCARDOWN banana ROOT files are saved, respectively:
 
 ```bash
-./oscar_editor -o path/to/output_dir
-./oscar_editor --output path/to/output_dir
+./oscar_editor -o path/to/oscarup_dir path/to/oscardown_dir
+./oscar_editor --output path/to/oscarup_dir path/to/oscardown_dir
 ```
 
-The output directory is created automatically if it does not exist.
+The output directories are created automatically if they do not exist.
 
 Show options:
 

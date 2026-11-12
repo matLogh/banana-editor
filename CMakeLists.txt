@@ -26,6 +26,7 @@ set(BANANA_EDITOR_EXAMPLE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/example_editors")
 set(BANANA_EDITOR_EXAMPLE_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/example_data" CACHE PATH "Path to the example ROOT data directory")
 
 option(BANANA_EDITOR_BUILD_EXAMPLES "Build all bundled banana editor example executables" ${BANANA_EDITOR_IS_TOP_LEVEL})
+option(BANANA_EDITOR_BUILD_SIMPLE_EDITOR "Build the generic single-matrix banana editor" ${BANANA_EDITOR_IS_TOP_LEVEL})
 option(BANANA_EDITOR_BUILD_KRATTA_EDITOR "Build the bundled KRATTA banana editor executable" ${BANANA_EDITOR_BUILD_EXAMPLES})
 option(BANANA_EDITOR_BUILD_OSCAR_EDITOR "Build the bundled OSCAR banana editor executable" ${BANANA_EDITOR_BUILD_EXAMPLES})
 
@@ -65,6 +66,11 @@ function(add_banana_editor_bundled_example target source)
     COMMENT "Creating symbolic link to example_data directory"
   )
 endfunction()
+
+if(BANANA_EDITOR_BUILD_SIMPLE_EDITOR)
+  add_banana_editor_executable(simple_banana_editor standalone_editor.cpp)
+  set_target_properties(simple_banana_editor PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+endif()
 
 if(BANANA_EDITOR_BUILD_KRATTA_EDITOR)
   add_banana_editor_bundled_example(kratta_editor ${BANANA_EDITOR_EXAMPLE_DIR}/kratta_editor.cpp)

@@ -60,7 +60,11 @@ void WriteBananaObject(TObject *obj)
 ClassImpQ(TBananaEditor)
 
     TBananaEditor::TBananaEditor(const char *colName)
-    : TObject(), fCollectionName(colName), fDefaultBananaNameEntry(nullptr)
+    : TObject(), fEcan(nullptr), fCanvas(nullptr), fMain(nullptr), fCollectionName(colName), hframe0(nullptr),
+      hframe1(nullptr), fBtnNewBanana(nullptr), fBtnEditBanana(nullptr), fBtnDeleteBanana(nullptr),
+      fBtnCancel(nullptr), fBtnOK(nullptr), fBtnExit(nullptr), fBtnSave(nullptr), fDefaultBananaNameEntry(nullptr),
+      fStatusBar(nullptr), fHist(nullptr), fGraph(nullptr), fBananaList(nullptr), fBananaListTemp(nullptr),
+      selectedPoint(-1), fID(0), fBananaEditStatus(kNothing), fClosing(false)
 {
     std::cout << "--------------------------\n";
     std::cout << "Keyboard Function Summary:\n"
@@ -838,6 +842,11 @@ void TBananaEditor::DoSave()
 
 void TBananaEditor::DoExit()
 {
+    if (fClosing)
+    {
+        return;
+    }
+
     int retval;
     bool isEdited = IsEdited();
 
@@ -881,6 +890,12 @@ void TBananaEditor::TryToClose()
 
 void TBananaEditor::CloseWindow()
 {
+    if (fClosing)
+    {
+        return;
+    }
+    fClosing = true;
+
     if (fHist && fHist->InheritsFrom(TH2::Class()))
     {
         TAxis *xaxis = fHist->GetXaxis();
@@ -925,14 +940,33 @@ void TBananaEditor::CloseWindow()
         }
     }
 
-    Emit("ClosingBananaWindow(TBananaEditor*)", this);
-    fMain->CloseWindow();
-
-    // Cleanup
     if (fBananaListTemp)
     {
         delete fBananaListTemp;
         fBananaListTemp = nullptr;
+    }
+
+    // ROOT deletes a TGMainFrame asynchronously. Disconnect callbacks first so
+    // queued GUI events cannot re-enter this stack-allocated editor while the
+    // deep-cleanup frame and embedded canvas are being destroyed.
+    if (fCanvas)
+    {
+        fCanvas->Disconnect(nullptr, this, nullptr);
+    }
+    if (fMain)
+    {
+        fMain->Disconnect(nullptr, this, nullptr);
+    }
+
+    Emit("ClosingBananaWindow(TBananaEditor*)", this);
+
+    TGMainFrame *main_frame = fMain;
+    fMain                  = nullptr;
+    fCanvas                = nullptr;
+    fEcan                  = nullptr;
+    if (main_frame)
+    {
+        main_frame->CloseWindow();
     }
 }
 
